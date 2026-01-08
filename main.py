@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import pytz
+import json
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -45,23 +46,27 @@ def root():
     
 # --- JOTFORM WEBHOOK ---
 @app.post("/jotform")
-async def jotform_webhook(request: Request):
+async def jotform_webhook(request: Request):    
     data = await request.form()
-    #if data.get("Code secret") != JOTFORM_SECRET:
+    raw = data.get("rawRequest")  # c'est une string JSON
+    if not raw:
+        return {"error": "rawRequest manquant"}
+    parsed = json.loads(raw)
+    if parsed.get("Code secret") != JOTFORM_SECRET:
     #    raise HTTPException(status_code=401, detail="Unauthorized")
 
     # 📥 Extraction
-    first_name = data.get("Prénom")
-    last_name = data.get("Nom de famille")
-    email = data.get("Email")
-    phone = data.get("Phone number")
-    session_type = data.get("Type de réunion")
-    title = data.get("Titre de la réunion")
-    description = data.get("Description")
-    date = data.get("Date")
-    time = data.get("Heure")
-    duration_raw = data.get("Durée de la réunion (en min)")
-    recording = data.get("Enregistrement de la réunion")
+    first_name = parsed.get("Prénom")
+    last_name = parsed.get("Nom de famille")
+    email = parsed.get("Email")
+    phone = parsed.get("Phone number")
+    session_type = parsed.get("Type de réunion")
+    title = parsed.get("Titre de la réunion")
+    description = parsed.get("Description")
+    date = parsed.get("Date")
+    time = parsed.get("Heure")
+    duration_raw = parsed.get("Durée de la réunion (en min)")
+    recording = parsed.get("Enregistrement de la réunion")
 
     # --- REDIRECTION OAUTH ---
     # On redirige l'utilisateur vers Zoom si on n'a pas encore son code
@@ -122,7 +127,3 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
-
-
-
-
