@@ -8,9 +8,12 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import pytz
 import json
+import secrets
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
+
+PENDING = {}
 
 # --- CONFIGURATION ---
 CLIENT_ID = "NyfRXLUqT7aXqE2jiMrow"
@@ -39,6 +42,18 @@ def send_email(to_email, subject, body):
     server.quit()
     logging.info(f"✅ Email envoyé à {to_email}")
 
+# --- JOTFORM WEBHOOK ---
+@app.get("/start")
+def start_oauth(token: str):
+    zoom_url = (
+        "https://zoom.us/oauth/authorize"
+        f"?response_type=code"
+        f"&client_id={CLIENT_ID}"
+        f"&redirect_uri={REDIRECT_URI}"
+        f"&state={token}"
+    )
+    return RedirectResponse(zoom_url)
+    
 # --- JOTFORM WEBHOOK ---
 @app.get("/")
 def root():
@@ -82,12 +97,13 @@ async def jotform_webhook(request: Request):
     recording = parsed.get("q13_recording")
 
     # --- REDIRECTION OAUTH ---
-    # On redirige l'utilisateur vers Zoom si on n'a pas encore son code
-    zoom_auth_url = (
-        f"https://zoom.us/oauth/authorize?"
-        f"response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={email}"
-    )
-    return RedirectResponse(url=zoom_auth_url)
+    token = secrets.token_urlsafe(32)
+    PENDING[token] = parsed
+    return {
+        "status": "ok",
+        "message": "Formulaire reçu",
+        "auth_url": f"https://tonserveur.com/start?token={token}"
+    }
 
 # --- CALLBACK OAUTH ZOOM ---
 @app.get("/zoom/callback")
@@ -140,6 +156,7 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
+
 
 
 
