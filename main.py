@@ -3,7 +3,7 @@ from datetime import datetime
 import requests
 import requests
 import base64
-
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -149,6 +149,15 @@ def send_email(to_email, subject, body):
 
 app = FastAPI()
 
+@app.get("/test_zoom")
+def test_zoom():
+    token = get_zoom_access_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.get("https://api.zoom.us/v2/users/me", headers=headers)
+    return {"status_code": r.status_code, "response": r.json()}
+
+####################################################################################
+
 JOTFORM_SECRET = "515253"
 
 @app.post("/jotform")
@@ -251,6 +260,7 @@ async def jotform_webhook(request: Request):
     except Exception as e:
         print("🔥 ERREUR :", str(e))
         raise HTTPException(status_code=500, detail="Erreur serveur interne")
+
 
 
 
