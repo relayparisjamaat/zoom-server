@@ -57,29 +57,29 @@ async def jotform_webhook(request: Request):
         raise HTTPException(status_code=400, detail="rawRequest manquant")
 
     try:
-        payload = json.loads(raw)
+        parsed = json.loads(raw)
     except Exception as e:
         logging.error(f"❌ JSON invalide : {e}")
         raise HTTPException(status_code=400, detail="JSON invalide")
 
     # 🔍 LOG DU CONTENU PARSÉ
-    logging.info(f"📦 PAYLOAD PARSÉ : {payload}")
+    logging.info(f"📦 PAYLOAD PARSÉ : {parsed}")
     
-    if parsed.get("Code secret") != JOTFORM_SECRET:
+    if parsed.get("q14_codeSecret") != JOTFORM_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
     # Extraction
-    first_name = parsed.get("Prénom")
-    last_name = parsed.get("Nom de famille")
-    email = parsed.get("Email")
-    phone = parsed.get("Phone number")
-    session_type = parsed.get("Type de réunion")
-    title = parsed.get("Titre de la réunion")
-    description = parsed.get("Description")
-    date = parsed.get("Date")
-    time = parsed.get("Heure")
-    duration_raw = parsed.get("Durée de la réunion (en min)")
-    recording = parsed.get("Enregistrement de la réunion")
+    first_name = parsed.get("q9_first_name")
+    last_name = parsed.get("q10_last_time")
+    email = parsed.get("q11_eEmail")
+    phone = parsed.get("q12_phone")
+    session_type = parsed.get("q3_session_type")
+    title = parsed.get("q4_title")
+    description = parsed.get("q7_description")
+    date = parsed.get("q15_date")
+    time = parsed.get("q14_heure")
+    duration_raw = parsed.get("q6_duration")
+    recording = parsed.get("q13_recording")
 
     # --- REDIRECTION OAUTH ---
     # On redirige l'utilisateur vers Zoom si on n'a pas encore son code
@@ -140,5 +140,6 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
+
 
 
