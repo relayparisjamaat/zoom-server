@@ -53,9 +53,9 @@ async def jotform_webhook(request: Request):
         return {"error": "rawRequest manquant"}
     parsed = json.loads(raw)
     if parsed.get("Code secret") != JOTFORM_SECRET:
-    #    raise HTTPException(status_code=401, detail="Unauthorized")
-
-    # 📥 Extraction
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    # Extraction
     first_name = parsed.get("Prénom")
     last_name = parsed.get("Nom de famille")
     email = parsed.get("Email")
@@ -127,3 +127,4 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
+
