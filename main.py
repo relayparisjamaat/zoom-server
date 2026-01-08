@@ -4,6 +4,10 @@ import pytz
 
 app = FastAPI()
 
-JOTFORM_SECRET = "JOTFORM_SECRET_2026"
+JOTFORM_SECRET = "515253"
 
 @app.post("/jotform")
+async def jotform_webhook(request: Request):
+    data = await request.form()
+    print("📦 DATA BRUTE JOTFORM :", data)
+    return {"status": "received"}
