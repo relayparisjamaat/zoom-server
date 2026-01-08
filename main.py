@@ -47,11 +47,24 @@ def root():
 # --- JOTFORM WEBHOOK ---
 @app.post("/jotform")
 async def jotform_webhook(request: Request):    
-    data = await request.form()
-    raw = data.get("rawRequest")  # c'est une string JSON
+    form = await request.form()
+    
+    logging.info(f"📦 FORM KEYS REÇUES : {list(form.keys())}")
+
+    raw = form.get("rawRequest")
     if not raw:
-        return {"error": "rawRequest manquant"}
-    parsed = json.loads(raw)
+        logging.error("❌ rawRequest absent")
+        raise HTTPException(status_code=400, detail="rawRequest manquant")
+
+    try:
+        payload = json.loads(raw)
+    except Exception as e:
+        logging.error(f"❌ JSON invalide : {e}")
+        raise HTTPException(status_code=400, detail="JSON invalide")
+
+    # 🔍 LOG DU CONTENU PARSÉ
+    logging.info(f"📦 PAYLOAD PARSÉ : {payload}")
+    
     if parsed.get("Code secret") != JOTFORM_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -127,4 +140,5 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
+
 
