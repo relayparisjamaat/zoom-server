@@ -1,6 +1,8 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 
 app = FastAPI()
+
+JOTFORM_SECRET = "515253"
 
 @app.get("/")
 def root():
@@ -13,5 +15,10 @@ def jotform_test():
 @app.post("/jotform")
 async def jotform_webhook(request: Request):
     data = await request.form()
-    print(data)
+
+    # 🔐 Vérification du secret
+    if data.get("secret") != JOTFORM_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    print("✅ Webhook sécurisé reçu :", data)
     return {"status": "received"}
