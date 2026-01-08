@@ -22,24 +22,20 @@ CLIENT_ID = "NyfRXLUqT7aXqE2jiMrow"
 CLIENT_SECRET = "kOzy09JN4BspXvzaDZSswNpY8koZMKds"
 
 def get_zoom_access_token():
+    # Encodage en Base64
     creds = f"{CLIENT_ID}:{CLIENT_SECRET}"
     encoded_creds = base64.b64encode(creds.encode()).decode()
 
     headers = {
         "Authorization": f"Basic {encoded_creds}"
     }
-
     url = "https://zoom.us/oauth/token?grant_type=client_credentials"
     r = requests.post(url, headers=headers)
     r.raise_for_status()
     token = r.json().get("access_token")
     return token
 
-access_token = get_zoom_access_token()
-headers = {
-    "Authorization": f"Bearer {access_token}",
-    "Content-Type": "application/json"
-}
+#####################################################################################
 
 def create_zoom_user(email, first_name, last_name):
     url = "https://api.zoom.us/v2/users"
@@ -57,7 +53,12 @@ def create_zoom_user(email, first_name, last_name):
         }
     }
 
-    response = requests.post(url, headers=headers, json=payload)
+    access_token = get_zoom_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    response = requests.post("https://api.zoom.us/v2/users", headers=headers, json=payload)
 
     if response.status_code in [201, 409]:  # 201 = créé, 409 = existe déjà
         data = response.json()
@@ -74,11 +75,6 @@ def create_zoom_session(host_id, session_type, topic, description, start_time, d
     url = f"https://api.zoom.us/v2/users/{host_id}/meetings"
     if session_type == "webinar":
         url = f"https://api.zoom.us/v2/users/{host_id}/webinars"
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
 
     payload = {
         "topic": topic,
@@ -97,7 +93,12 @@ def create_zoom_session(host_id, session_type, topic, description, start_time, d
         }
     }
 
-    response = requests.post(url, headers=headers, json=payload)
+    access_token = get_zoom_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    response = requests.post("https://api.zoom.us/v2/users", headers=headers, json=payload)
 
     if response.status_code in [201, 200]:
         return response.json()
@@ -112,6 +113,14 @@ def get_upcoming_zoom_meetings(host_id):
         "Authorization": f"Bearer {ZOOM_JWT_TOKEN}"
     }
     response = requests.get(url, headers=headers)
+
+    access_token = get_zoom_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    response = requests.get(url, headers=headers)
+
     if response.status_code != 200:
         raise Exception(f"Erreur récupération meetings : {response.status_code} {response.text}")
 
@@ -249,4 +258,5 @@ async def jotform_webhook(request: Request):
     except Exception as e:
         print("🔥 ERREUR :", str(e))
         raise HTTPException(status_code=500, detail="Erreur serveur interne")
+
 
