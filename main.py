@@ -210,10 +210,6 @@ async def jotform_webhook(request: Request):
                 raise e
 
         print("Zoom session créée :", zoom_session.get("join_url"))
-        
-        except Exception as e:
-            print("🔥 ERREUR :", str(e))
-            raise HTTPException(status_code=500, detail="Erreur serveur interne")
 
         if conflict:
             body = "Impossible de créer la réunion, il y a un conflit. Voici vos réunions à venir :\n\n"
@@ -226,6 +222,7 @@ async def jotform_webhook(request: Request):
         send_email(email, subject, body)
     
         return {"status": "received"}
-
-
-
+    
+    except Exception as e:
+        print("🔥 ERREUR :", str(e))
+        raise HTTPException(status_code=500, detail="Erreur serveur interne")
