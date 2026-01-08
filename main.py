@@ -39,6 +39,8 @@ def get_zoom_access_token():
 
 def create_zoom_user(email, first_name, last_name):
     url = "https://api.zoom.us/v2/users"
+    access_token = get_zoom_access_token()
+    print("Create Zoom User Token OAuth Zoom :", access_token)
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
@@ -53,11 +55,6 @@ def create_zoom_user(email, first_name, last_name):
         }
     }
 
-    access_token = get_zoom_access_token()
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
     response = requests.post("https://api.zoom.us/v2/users", headers=headers, json=payload)
 
     if response.status_code in [201, 409]:  # 201 = créé, 409 = existe déjà
@@ -94,6 +91,7 @@ def create_zoom_session(host_id, session_type, topic, description, start_time, d
     }
 
     access_token = get_zoom_access_token()
+    print("Create Zoom Session Token OAuth Zoom :", access_token)
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
@@ -110,15 +108,9 @@ def create_zoom_session(host_id, session_type, topic, description, start_time, d
 def get_upcoming_zoom_meetings(host_id):
     url = f"https://api.zoom.us/v2/users/{host_id}/meetings?type=scheduled"
     access_token = get_zoom_access_token()
+    print("Get upcoming Zoom Meetings Token OAuth Zoom :", access_token)
     headers = {
         "Authorization": f"Bearer {access_token}",
-    }
-    response = requests.get(url, headers=headers)
-
-    access_token = get_zoom_access_token()
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
     }
     response = requests.get(url, headers=headers)
 
@@ -259,6 +251,7 @@ async def jotform_webhook(request: Request):
     except Exception as e:
         print("🔥 ERREUR :", str(e))
         raise HTTPException(status_code=500, detail="Erreur serveur interne")
+
 
 
 
