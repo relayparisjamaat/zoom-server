@@ -109,8 +109,9 @@ def create_zoom_session(host_id, session_type, topic, description, start_time, d
 
 def get_upcoming_zoom_meetings(host_id):
     url = f"https://api.zoom.us/v2/users/{host_id}/meetings?type=scheduled"
+    access_token = get_zoom_access_token()
     headers = {
-        "Authorization": f"Bearer {ZOOM_JWT_TOKEN}"
+        "Authorization": f"Bearer {access_token}",
     }
     response = requests.get(url, headers=headers)
 
@@ -258,5 +259,6 @@ async def jotform_webhook(request: Request):
     except Exception as e:
         print("🔥 ERREUR :", str(e))
         raise HTTPException(status_code=500, detail="Erreur serveur interne")
+
 
 
