@@ -42,7 +42,7 @@ def send_email(to_email, subject, body):
 @app.post("/jotform")
 async def jotform_webhook(request: Request):
     data = await request.form()
-    if data.get("Type a question") != JOTFORM_SECRET:
+    if data.get("Code secret") != JOTFORM_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     # 📥 Extraction
@@ -117,5 +117,6 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
+
 
 
