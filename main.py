@@ -71,6 +71,26 @@ def create_zoom_session(host_id, session_type, topic, description, start_time, d
 
 #####################################################################################
 
+def get_upcoming_zoom_meetings(host_id):
+    url = f"https://api.zoom.us/v2/users/{host_id}/meetings?type=scheduled"
+    headers = {
+        "Authorization": f"Bearer {ZOOM_JWT_TOKEN}"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Erreur récupération meetings : {response.status_code} {response.text}")
+
+    meetings = response.json().get("meetings", [])
+    summary = []
+    for m in meetings:
+        start = m.get("start_time")  # ISO string
+        topic = m.get("topic")
+        duration = m.get("duration")
+        summary.append(f"{topic} - {start} ({duration} min)")
+    return summary
+
+#####################################################################################
+
 app = FastAPI()
 
 JOTFORM_SECRET = "515253"
@@ -155,3 +175,4 @@ async def jotform_webhook(request: Request):
             raise HTTPException(status_code=500, detail="Erreur serveur interne")
 
         return {"status": "received"}
+
