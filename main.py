@@ -158,21 +158,21 @@ async def jotform_webhook(request: Request):
         print("📦 DATA BRUTE :", data)
 
         # 🔐 Sécurité
-        if data.get("secret") != JOTFORM_SECRET:
+        if data.get("Type a question") != JOTFORM_SECRET:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
         # 📥 Extraction
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
-        email = data.get("email")
-        phone = data.get("phone")
-        session_type = data.get("session_type")
-        title = data.get("title")
-        description = data.get("description")
-        date = data.get("date")
-        time = data.get("time")
-        duration_raw = data.get("duration")
-        recording = data.get("recording", "Non")
+        first_name = data.get("Prénom")
+        last_name = data.get("Nom de famille")
+        email = data.get("Email")
+        phone = data.get("Phone number")
+        session_type = data.get("Type de réunion")
+        title = data.get("Titre de la réunion")
+        description = data.get("Description")
+        date = data.get("Date")
+        time = data.get("Heure")
+        duration_raw = data.get("Durée de la réunion (en min)")
+        recording = data.get("Enregistrement de la réunion")
 
         # ✅ Vérification champs obligatoires
         required = {
@@ -251,6 +251,7 @@ async def jotform_webhook(request: Request):
     except Exception as e:
         print("🔥 ERREUR :", str(e))
         raise HTTPException(status_code=500, detail="Erreur serveur interne")
+
 
 
 
