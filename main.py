@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 # --- CONFIGURATION ---
 CLIENT_ID = "NyfRXLUqT7aXqE2jiMrow"
 CLIENT_SECRET = "kOzy09JN4BspXvzaDZSswNpY8koZMKds"
-REDIRECT_URI = "https://tonserveur.com/zoom/callback"
+REDIRECT_URI = "https://zoom-server-zruq.onrender.com/zoom/callback"
 JOTFORM_SECRET = "515253"
 
 SMTP_SERVER = "smtp.gmail.com"
@@ -117,3 +117,4 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
+
