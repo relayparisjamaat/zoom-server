@@ -2,6 +2,18 @@ from fastapi import FastAPI, Request, HTTPException
 from datetime import datetime
 import requests
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+#####################################################################################
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USER = "relay.parisjamaat@gmail.com"          # ton email
+SMTP_PASSWORD = "Relayparis53"         # mot de passe d'application Gmail
+FROM_NAME = "Zoom Scheduler"
+
 #####################################################################################
 
 ZOOM_JWT_TOKEN = "TON_TOKEN_JWT"
@@ -89,6 +101,25 @@ def get_upcoming_zoom_meetings(host_id):
         summary.append(f"{topic} - {start} ({duration} min)")
     return summary
 
+#####################################################################################
+
+def send_email(to_email, subject, body):
+    msg = MIMEMultipart()
+    msg['From'] = FROM_NAME
+    msg['To'] = to_email
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(SMTP_USER, SMTP_PASSWORD)
+    server.send_message(msg)
+    server.quit()
+    print(f"✅ Email envoyé à {to_email}")
+
+#####################################################################################
+###################################### MAIN #########################################
 #####################################################################################
 
 app = FastAPI()
@@ -187,9 +218,14 @@ async def jotform_webhook(request: Request):
         if conflict:
             body = "Impossible de créer la réunion, il y a un conflit. Voici vos réunions à venir :\n\n"
             body += "\n".join(upcoming_meetings)
+            subject = "Conflit horaire - Zoom Scheduler"
         else:
-            body = f"Votre réunion a été créée : {join_url}"
+            body = f"Votre réunion a été créée avec succès !\nLien : {join_url}\nDate : {start_datetime}"
+            subject = "Votre réunion Zoom"
+        
+        send_email(email, subject, body)
     
         return {"status": "received"}
+
 
 
