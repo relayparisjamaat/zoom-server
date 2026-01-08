@@ -158,15 +158,25 @@ async def jotform_webhook(request: Request):
         print("Zoom User créé ou existant :", host_id)
 
         # Créer la réunion ou webinar
-        zoom_session = create_zoom_session(
-            host_id=host_id,
-            session_type=session_type,  # "meeting" ou "webinar"
-            topic=title,
-            description=description,
-            start_time=start_datetime,
-            duration=duration,
-            recording_enabled=recording_enabled
-        )
+        try:
+            zoom_session = create_zoom_session(
+                host_id=host_id,
+                session_type=session_type,
+                topic=title,
+                description=description,
+                start_time=start_datetime,
+                duration=duration,
+                recording_enabled=recording_enabled
+            )
+            join_url = zoom_session.get("join_url")
+            conflict = False
+        except Exception as e:
+            if "409" in str(e):  # conflit horaire
+                conflict = True
+                join_url = None
+                upcoming_meetings = get_upcoming_zoom_meetings(host_id)
+            else:
+                raise e
 
         print("Zoom session créée :", zoom_session.get("join_url"))
         
@@ -174,5 +184,12 @@ async def jotform_webhook(request: Request):
             print("🔥 ERREUR :", str(e))
             raise HTTPException(status_code=500, detail="Erreur serveur interne")
 
+        if conflict:
+            body = "Impossible de créer la réunion, il y a un conflit. Voici vos réunions à venir :\n\n"
+            body += "\n".join(upcoming_meetings)
+        else:
+            body = f"Votre réunion a été créée : {join_url}"
+    
         return {"status": "received"}
+
 
