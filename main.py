@@ -1,5 +1,75 @@
 from fastapi import FastAPI, Request, HTTPException
 from datetime import datetime
+import requests
+
+#####################################################################################
+
+ZOOM_JWT_TOKEN = "TON_TOKEN_JWT"
+
+def create_zoom_user(email, first_name, last_name):
+    url = "https://api.zoom.us/v2/users"
+    headers = {
+        "Authorization": f"Bearer {ZOOM_JWT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "action": "create",
+        "user_info": {
+            "email": email,
+            "type": 1,  # Basic
+            "first_name": first_name,
+            "last_name": last_name
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code in [201, 409]:  # 201 = créé, 409 = existe déjà
+        data = response.json()
+        return data
+    else:
+        raise Exception(f"Erreur Zoom : {response.status_code} {response.text}")
+
+#####################################################################################
+
+def create_zoom_session(host_id, session_type, topic, description, start_time, duration, recording_enabled):
+    """
+    Crée une réunion ou webinar Zoom pour un utilisateur existant.
+    """
+    url = f"https://api.zoom.us/v2/users/{host_id}/meetings"
+    if session_type == "webinar":
+        url = f"https://api.zoom.us/v2/users/{host_id}/webinars"
+
+    headers = {
+        "Authorization": f"Bearer {ZOOM_JWT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "topic": topic,
+        "type": 2,  # 2 = Scheduled meeting / webinar
+        "start_time": start_time.isoformat(),  # ISO format avec timezone
+        "duration": duration,  # en minutes
+        "agenda": description,
+        "settings": {
+            "host_video": True,
+            "participant_video": True,
+            "join_before_host": False,
+            "approval_type": 0,  # auto-approval
+            "registration_type": 1,
+            "meeting_authentication": False,
+            "auto_recording": "cloud" if recording_enabled else "none"
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code in [201, 200]:
+        return response.json()
+    else:
+        raise Exception(f"Erreur Zoom session : {response.status_code} {response.text}")
+
+#####################################################################################
 
 app = FastAPI()
 
@@ -62,8 +132,26 @@ async def jotform_webhook(request: Request):
         print(email, session_type, title)
         print(start_datetime, duration, recording_enabled)
 
-        return {"status": "received"}
+        # Créer ou récupérer l'utilisateur Zoom
+        zoom_user = create_zoom_user(email, first_name, last_name)
+        host_id = zoom_user.get("id")  # cet ID servira pour créer la réunion
+        print("Zoom User créé ou existant :", host_id)
 
-    except Exception as e:
-        print("🔥 ERREUR :", str(e))
-        raise HTTPException(status_code=500, detail="Erreur serveur interne")
+        # Créer la réunion ou webinar
+        zoom_session = create_zoom_session(
+            host_id=host_id,
+            session_type=session_type,  # "meeting" ou "webinar"
+            topic=title,
+            description=description,
+            start_time=start_datetime,
+            duration=duration,
+            recording_enabled=recording_enabled
+        )
+
+        print("Zoom session créée :", zoom_session.get("join_url"))
+        
+        except Exception as e:
+            print("🔥 ERREUR :", str(e))
+            raise HTTPException(status_code=500, detail="Erreur serveur interne")
+
+        return {"status": "received"}
