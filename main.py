@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException
 from datetime import datetime
 import requests
+import requests
+import base64
 
 import smtplib
 from email.mime.text import MIMEText
@@ -16,12 +18,33 @@ FROM_NAME = "Zoom Scheduler"
 
 #####################################################################################
 
-ZOOM_JWT_TOKEN = "TON_TOKEN_JWT"
+CLIENT_ID = "NyfRXLUqT7aXqE2jiMrow"
+CLIENT_SECRET = "kOzy09JN4BspXvzaDZSswNpY8koZMKds"
+
+def get_zoom_access_token():
+    creds = f"{CLIENT_ID}:{CLIENT_SECRET}"
+    encoded_creds = base64.b64encode(creds.encode()).decode()
+
+    headers = {
+        "Authorization": f"Basic {encoded_creds}"
+    }
+
+    url = "https://zoom.us/oauth/token?grant_type=client_credentials"
+    r = requests.post(url, headers=headers)
+    r.raise_for_status()
+    token = r.json().get("access_token")
+    return token
+
+access_token = get_zoom_access_token()
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Content-Type": "application/json"
+}
 
 def create_zoom_user(email, first_name, last_name):
     url = "https://api.zoom.us/v2/users"
     headers = {
-        "Authorization": f"Bearer {ZOOM_JWT_TOKEN}",
+        "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
     payload = {
@@ -53,7 +76,7 @@ def create_zoom_session(host_id, session_type, topic, description, start_time, d
         url = f"https://api.zoom.us/v2/users/{host_id}/webinars"
 
     headers = {
-        "Authorization": f"Bearer {ZOOM_JWT_TOKEN}",
+        "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
@@ -226,3 +249,4 @@ async def jotform_webhook(request: Request):
     except Exception as e:
         print("🔥 ERREUR :", str(e))
         raise HTTPException(status_code=500, detail="Erreur serveur interne")
+
