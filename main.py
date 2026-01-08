@@ -1,14 +1,21 @@
 from fastapi import FastAPI, Request, HTTPException
-from datetime import datetime
+from fastapi.responses import RedirectResponse
 import requests
-import requests
-import base64
 import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime
+import pytz
 
-#####################################################################################
+app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+
+# --- CONFIGURATION ---
+CLIENT_ID = "NyfRXLUqT7aXqE2jiMrow"
+CLIENT_SECRET = "kOzy09JN4BspXvzaDZSswNpY8koZMKds"
+REDIRECT_URI = "https://tonserveur.com/zoom/callback"
+JOTFORM_SECRET = "515253"
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -16,124 +23,12 @@ SMTP_USER = "relay.parisjamaat@gmail.com"          # ton email
 SMTP_PASSWORD = "Relayparis53"         # mot de passe d'application Gmail
 FROM_NAME = "Zoom Scheduler"
 
-#####################################################################################
-
-CLIENT_ID = "NyfRXLUqT7aXqE2jiMrow"
-CLIENT_SECRET = "kOzy09JN4BspXvzaDZSswNpY8koZMKds"
-
-def get_zoom_access_token():
-    # Encodage en Base64
-    creds = f"{CLIENT_ID}:{CLIENT_SECRET}"
-    encoded_creds = base64.b64encode(creds.encode()).decode()
-
-    headers = {
-        "Authorization": f"Basic {encoded_creds}"
-    }
-    url = "https://zoom.us/oauth/token?grant_type=client_credentials"
-    r = requests.post(url, headers=headers)
-    r.raise_for_status()
-    token = r.json().get("access_token")
-    return token
-
-#####################################################################################
-
-def create_zoom_user(email, first_name, last_name):
-    url = "https://api.zoom.us/v2/users"
-    access_token = get_zoom_access_token()
-    print("Create Zoom User Token OAuth Zoom :", access_token)
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "action": "create",
-        "user_info": {
-            "email": email,
-            "type": 1,  # Basic
-            "first_name": first_name,
-            "last_name": last_name
-        }
-    }
-
-    response = requests.post("https://api.zoom.us/v2/users", headers=headers, json=payload)
-
-    if response.status_code in [201, 409]:  # 201 = créé, 409 = existe déjà
-        data = response.json()
-        return data
-    else:
-        raise Exception(f"Erreur Zoom : {response.status_code} {response.text}")
-
-#####################################################################################
-
-def create_zoom_session(host_id, session_type, topic, description, start_time, duration, recording_enabled):
-    """
-    Crée une réunion ou webinar Zoom pour un utilisateur existant.
-    """
-    url = f"https://api.zoom.us/v2/users/{host_id}/meetings"
-    if session_type == "webinar":
-        url = f"https://api.zoom.us/v2/users/{host_id}/webinars"
-
-    payload = {
-        "topic": topic,
-        "type": 2,  # 2 = Scheduled meeting / webinar
-        "start_time": start_time.isoformat(),  # ISO format avec timezone
-        "duration": duration,  # en minutes
-        "agenda": description,
-        "settings": {
-            "host_video": True,
-            "participant_video": True,
-            "join_before_host": False,
-            "approval_type": 0,  # auto-approval
-            "registration_type": 1,
-            "meeting_authentication": False,
-            "auto_recording": "cloud" if recording_enabled else "none"
-        }
-    }
-
-    access_token = get_zoom_access_token()
-    print("Create Zoom Session Token OAuth Zoom :", access_token)
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-    response = requests.post("https://api.zoom.us/v2/users", headers=headers, json=payload)
-
-    if response.status_code in [201, 200]:
-        return response.json()
-    else:
-        raise Exception(f"Erreur Zoom session : {response.status_code} {response.text}")
-
-#####################################################################################
-
-def get_upcoming_zoom_meetings(host_id):
-    url = f"https://api.zoom.us/v2/users/{host_id}/meetings?type=scheduled"
-    access_token = get_zoom_access_token()
-    print("Get upcoming Zoom Meetings Token OAuth Zoom :", access_token)
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-    }
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        raise Exception(f"Erreur récupération meetings : {response.status_code} {response.text}")
-
-    meetings = response.json().get("meetings", [])
-    summary = []
-    for m in meetings:
-        start = m.get("start_time")  # ISO string
-        topic = m.get("topic")
-        duration = m.get("duration")
-        summary.append(f"{topic} - {start} ({duration} min)")
-    return summary
-
-#####################################################################################
-
+# --- EMAIL ---
 def send_email(to_email, subject, body):
     msg = MIMEMultipart()
     msg['From'] = FROM_NAME
     msg['To'] = to_email
     msg['Subject'] = subject
-
     msg.attach(MIMEText(body, 'plain'))
 
     server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
@@ -141,128 +36,84 @@ def send_email(to_email, subject, body):
     server.login(SMTP_USER, SMTP_PASSWORD)
     server.send_message(msg)
     server.quit()
-    print(f"✅ Email envoyé à {to_email}")
+    logging.info(f"✅ Email envoyé à {to_email}")
 
-#####################################################################################
-###################################### MAIN #########################################
-#####################################################################################
-
-app = FastAPI()
-
-@app.get("/test_zoom")
-def test_zoom():
-    token = get_zoom_access_token()
-    headers = {"Authorization": f"Bearer {token}"}
-    r = requests.get("https://api.zoom.us/v2/users/me", headers=headers)
-    return {"status_code": r.status_code, "response": r.json()}
-
-####################################################################################
-
-JOTFORM_SECRET = "515253"
-
+# --- JOTFORM WEBHOOK ---
 @app.post("/jotform")
 async def jotform_webhook(request: Request):
-    try:
-        data = await request.form()
-        print("📦 DATA BRUTE :", data)
+    data = await request.form()
+    if data.get("secret") != JOTFORM_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
-        # 🔐 Sécurité
-        if data.get("Type a question") != JOTFORM_SECRET:
-            raise HTTPException(status_code=401, detail="Unauthorized")
+    # 📥 Extraction
+    first_name = data.get("Prénom")
+    last_name = data.get("Nom de famille")
+    email = data.get("Email")
+    phone = data.get("Phone number")
+    session_type = data.get("Type de réunion")
+    title = data.get("Titre de la réunion")
+    description = data.get("Description")
+    date = data.get("Date")
+    time = data.get("Heure")
+    duration_raw = data.get("Durée de la réunion (en min)")
+    recording = data.get("Enregistrement de la réunion")
 
-        # 📥 Extraction
-        first_name = data.get("Prénom")
-        last_name = data.get("Nom de famille")
-        email = data.get("Email")
-        phone = data.get("Phone number")
-        session_type = data.get("Type de réunion")
-        title = data.get("Titre de la réunion")
-        description = data.get("Description")
-        date = data.get("Date")
-        time = data.get("Heure")
-        duration_raw = data.get("Durée de la réunion (en min)")
-        recording = data.get("Enregistrement de la réunion")
+    # --- REDIRECTION OAUTH ---
+    # On redirige l'utilisateur vers Zoom si on n'a pas encore son code
+    zoom_auth_url = (
+        f"https://zoom.us/oauth/authorize?"
+        f"response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={email}"
+    )
+    return RedirectResponse(url=zoom_auth_url)
 
-        # ✅ Vérification champs obligatoires
-        required = {
-            "first_name": first_name,
-            "last_name": last_name,
-            "email": email,
-            "session_type": session_type,
-            "title": title,
-            "date": date,
-            "time": time,
-            "duration": duration_raw,
+# --- CALLBACK OAUTH ZOOM ---
+@app.get("/zoom/callback")
+def zoom_callback(code: str, state: str):
+    # state contient l'email de l'utilisateur
+    email = state
+
+    # Échanger code contre access token
+    token_url = "https://zoom.us/oauth/token"
+    params = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": REDIRECT_URI
+    }
+    auth = (CLIENT_ID, CLIENT_SECRET)
+    r = requests.post(token_url, params=params, auth=auth)
+    r.raise_for_status()
+    token_data = r.json()
+    access_token = token_data["access_token"]
+
+    # --- Récupérer l'user ID Zoom ---
+    headers = {"Authorization": f"Bearer {access_token}"}
+    r_user = requests.get("https://api.zoom.us/v2/users/me", headers=headers)
+    r_user.raise_for_status()
+    user_id = r_user.json()["id"]
+
+    # --- Créer la réunion ---
+    # Pour simplifier, ici on crée une réunion 30 min à partir de l'heure actuelle
+    start_time = (datetime.utcnow() + timedelta(minutes=15)).replace(microsecond=0).isoformat() + "Z"
+    payload = {
+        "topic": "Réunion Test",
+        "type": 2,
+        "start_time": start_time,
+        "duration": 30,
+        "agenda": "Réunion créée via Jotform",
+        "settings": {
+            "host_video": True,
+            "participant_video": True,
+            "join_before_host": False,
+            "auto_recording": "cloud"
         }
+    }
+    meeting_url = f"https://api.zoom.us/v2/users/{user_id}/meetings"
+    r_meeting = requests.post(meeting_url, headers=headers, json=payload)
+    r_meeting.raise_for_status()
+    join_url = r_meeting.json()["join_url"]
 
-        missing = [k for k, v in required.items() if not v]
-        if missing:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Champs manquants : {', '.join(missing)}"
-            )
+    # --- Envoyer mail ---
+    body = f"Votre réunion Zoom a été créée avec succès !\nLien : {join_url}"
+    send_email(email, "Votre réunion Zoom", body)
 
-        # 🔄 Conversions sûres
-        duration = int(duration_raw)
-        recording_enabled = recording == "Oui"
-        session_type = session_type.lower()
-
-        # 📅 Date + heure
-        start_datetime = datetime.strptime(
-            f"{date} {time}",
-            "%Y-%m-%d %H:%M"
-        )
-
-        print("✅ DONNÉES NETTOYÉES")
-        print(email, session_type, title)
-        print(start_datetime, duration, recording_enabled)
-
-        # Créer ou récupérer l'utilisateur Zoom
-        zoom_user = create_zoom_user(email, first_name, last_name)
-        host_id = zoom_user.get("id")  # cet ID servira pour créer la réunion
-        print("Zoom User créé ou existant :", host_id)
-
-        # Créer la réunion ou webinar
-        try:
-            zoom_session = create_zoom_session(
-                host_id=host_id,
-                session_type=session_type,
-                topic=title,
-                description=description,
-                start_time=start_datetime,
-                duration=duration,
-                recording_enabled=recording_enabled
-            )
-            join_url = zoom_session.get("join_url")
-            conflict = False
-        except Exception as e:
-            if "409" in str(e):  # conflit horaire
-                conflict = True
-                join_url = None
-                upcoming_meetings = get_upcoming_zoom_meetings(host_id)
-            else:
-                raise e
-
-        print("Zoom session créée :", zoom_session.get("join_url"))
-
-        if conflict:
-            body = "Impossible de créer la réunion, il y a un conflit. Voici vos réunions à venir :\n\n"
-            body += "\n".join(upcoming_meetings)
-            subject = "Conflit horaire - Zoom Scheduler"
-        else:
-            body = f"Votre réunion a été créée avec succès !\nLien : {join_url}\nDate : {start_datetime}"
-            subject = "Votre réunion Zoom"
-        
-        send_email(email, subject, body)
-    
-        return {"status": "received"}
-    
-    except Exception as e:
-        print("🔥 ERREUR :", str(e))
-        raise HTTPException(status_code=500, detail="Erreur serveur interne")
-
-
-
-
-
-
+    return {"status": "success", "join_url": join_url}
