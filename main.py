@@ -1,3 +1,149 @@
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
+import requests
+import os
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime
+
+app = FastAPI()
+
+ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID")
+ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
+ZOOM_REDIRECT_URI = os.getenv("ZOOM_REDIRECT_URI")
+
+TOKEN_FILE = "zoom_token.txt"
+
+
+# ---------------------------
+# UTILITAIRES
+# ---------------------------
+def save_token(token):
+    with open(TOKEN_FILE, "w") as f:
+        f.write(token)
+
+
+def load_token():
+    if not os.path.exists(TOKEN_FILE):
+        return None
+    with open(TOKEN_FILE) as f:
+        return f.read()
+
+
+# ---------------------------
+# OAUTH – ÉTAPE 1
+# ---------------------------
+@app.get("/start")
+def start_oauth():
+    url = (
+        "https://zoom.us/oauth/authorize"
+        f"?response_type=code&client_id={ZOOM_CLIENT_ID}"
+        f"&redirect_uri={ZOOM_REDIRECT_URI}"
+    )
+    return RedirectResponse(url)
+
+
+# ---------------------------
+# OAUTH – ÉTAPE 2
+# ---------------------------
+@app.get("/oauth/callback")
+def oauth_callback(code: str):
+    r = requests.post(
+        "https://zoom.us/oauth/token",
+        auth=(ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET),
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": ZOOM_REDIRECT_URI,
+        },
+    )
+    r.raise_for_status()
+    token = r.json()["access_token"]
+    save_token(token)
+    return {"status": "OAuth OK – token enregistré"}
+
+
+# ---------------------------
+# WEBHOOK JOTFORM
+# ---------------------------
+@app.post("/jotform")
+async def jotform_webhook(request: Request):
+    token = load_token()
+    if not token:
+        return RedirectResponse("/start")
+
+    form = await request.form()
+    raw = form.get("rawRequest")
+    data = eval(raw)  # simplification volontaire
+
+    if data.get("q14_codeSecret") != JOTFORM_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    # Extraction
+    first_name = data.get("q9_first_name")
+    last_name = data.get("q10_last_time")
+    email = data.get("q11_eEmail")
+    phone = data.get("q12_phone")
+    session_type = data.get("q3_session_type")
+    title = data.get("q4_title")
+    description = data.get("q7_description")
+    date = data.get("q15_date")
+    time = data.get("q14_heure")
+    duration_raw = data.get("q6_duration")
+    recording = data.get("q13_recording")
+
+    # ---------------------------
+    # CRÉATION RÉUNION ZOOM
+    # ---------------------------
+    meeting_payload = {
+        "topic": title,
+        "type": 2,
+        "start_time": start_time,
+        "duration": duration,
+        "schedule_for": email,
+        "settings": {
+            "auto_recording": "cloud" if recording else "none"
+        }
+    }
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    r = requests.post(
+        "https://api.zoom.us/v2/users/me/meetings",
+        headers=headers,
+        json=meeting_payload
+    )
+    r.raise_for_status()
+    meeting = r.json()
+
+    # ---------------------------
+    # ENVOI MAIL
+    # ---------------------------
+    msg = MIMEText(
+        f"""
+Votre réunion Zoom a été créée.
+
+Titre : {title}
+Date : {start_time}
+Lien Zoom : {meeting['join_url']}
+
+Vous êtes l'hôte de la réunion.
+"""
+    )
+    msg["Subject"] = "Votre réunion Zoom"
+    msg["From"] = os.getenv("SMTP_USER")
+    msg["To"] = email
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD"))
+        server.send_message(msg)
+
+    return {"status": "Réunion créée et mail envoyé"}
+
+'''
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse
 import requests
@@ -14,6 +160,10 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 
 PENDING = {}
+ZOOM_CLIENT_ID = os.getenv("ZOOM_CLIENT_ID")
+ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
+ZOOM_REDIRECT_URI = os.getenv("ZOOM_REDIRECT_URI")
+TOKEN_FILE = "zoom_token.txt"
 
 # --- CONFIGURATION ---
 CLIENT_ID = "NyfRXLUqT7aXqE2jiMrow"
@@ -26,6 +176,20 @@ SMTP_PORT = 587
 SMTP_USER = "relay.parisjamaat@gmail.com"          # ton email
 SMTP_PASSWORD = "Relayparis53"         # mot de passe d'application Gmail
 FROM_NAME = "Zoom Scheduler"
+
+# ---------------------------
+# UTILITAIRES
+# ---------------------------
+def save_token(token):
+    with open(TOKEN_FILE, "w") as f:
+        f.write(token)
+
+
+def load_token():
+    if not os.path.exists(TOKEN_FILE):
+        return None
+    with open(TOKEN_FILE) as f:
+        return f.read()
 
 # --- EMAIL ---
 def send_email(to_email, subject, body):
@@ -42,17 +206,38 @@ def send_email(to_email, subject, body):
     server.quit()
     logging.info(f"✅ Email envoyé à {to_email}")
 
-# --- JOTFORM WEBHOOK ---
+# ---------------------------
+# OAUTH – ÉTAPE 1
+# ---------------------------
 @app.get("/start")
 def start_oauth(token: str):
     zoom_url = (
         "https://zoom.us/oauth/authorize"
         f"?response_type=code"
-        f"&client_id={CLIENT_ID}"
-        f"&redirect_uri={REDIRECT_URI}"
+        f"&client_id={ZOOM_CLIENT_ID}"
+        f"&redirect_uri={ZOOM_REDIRECT_URI}"
         f"&state={token}"
     )
     return RedirectResponse(zoom_url)
+
+# ---------------------------
+# OAUTH – ÉTAPE 2
+# ---------------------------
+@app.get("/oauth/callback")
+def oauth_callback(code: str):
+    r = requests.post(
+        "https://zoom.us/oauth/token",
+        auth=(ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET),
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": ZOOM_REDIRECT_URI,
+        },
+    )
+    r.raise_for_status()
+    token = r.json()["access_token"]
+    save_token(token)
+    return {"status": "OAuth OK – token enregistré"}
     
 # --- JOTFORM WEBHOOK ---
 @app.get("/")
@@ -156,7 +341,4 @@ def zoom_callback(code: str, state: str):
     send_email(email, "Votre réunion Zoom", body)
 
     return {"status": "success", "join_url": join_url}
-
-
-
-
+'''
