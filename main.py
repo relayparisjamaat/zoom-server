@@ -17,6 +17,7 @@ ZOOM_CLIENT_SECRET = os.getenv("ZOOM_CLIENT_SECRET")
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
+JOTFORM_PASSWORD = "515253" #correspond à un champ caché dans le Jotform
 
 # -------------------------
 # ZOOM TOKEN (Server-to-Server OAuth)
@@ -52,7 +53,7 @@ async def jotform_webhook(request: Request):
 
         data = eval(raw)  # Jotform envoie un JSON stringifié
         
-        if data.get("q14_codeSecret") != JOTFORM_SECRET:
+        if data.get("q14_codeSecret") != JOTFORM_PASSWORD:
             raise HTTPException(status_code=401, detail="Unauthorized")
         
         # Extraction
@@ -162,3 +163,4 @@ Vous êtes désigné comme co-hôte de la réunion.
 @app.get("/")
 def root():
     return {"status": "server running"}
+
