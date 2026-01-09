@@ -40,7 +40,44 @@ def get_zoom_token():
     r.raise_for_status()
     return r.json()["access_token"]
 
+# -------------------------
+# Create a Zoom User
+# -------------------------
 
+def get_or_create_zoom_user(email, token):
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    # 1. Vérifier si l'utilisateur existe
+    r = requests.get(
+        "https://api.zoom.us/v2/users",
+        headers=headers,
+        params={"email": email}
+    )
+
+    if r.status_code == 200 and r.json().get("users"):
+        return email  # user existe déjà
+
+    # 2. Créer un user Basic
+    payload = {
+        "action": "create",
+        "user_info": {
+            "email": email,
+            "type": 1  # BASIC (gratuit)
+        }
+    }
+
+    r = requests.post(
+        "https://api.zoom.us/v2/users",
+        headers=headers,
+        json=payload
+    )
+    r.raise_for_status()
+
+    return email
+    
 # -------------------------
 # WEBHOOK JOTFORM
 # -------------------------
@@ -105,6 +142,9 @@ async def jotform_webhook(request: Request):
             "Content-Type": "application/json"
         }
 
+        # S'assurer que l'utilisateur existe dans Zoom
+        host_email = get_or_create_zoom_user(email, token)
+
         # -------------------------
         # CRÉATION RÉUNION
         # -------------------------
@@ -115,7 +155,7 @@ async def jotform_webhook(request: Request):
             "duration": duration,
             "agenda": description,
             "settings": {
-                "alternative_hosts": email,
+                "alternative_hosts": host_email,
                 "auto_recording": "cloud" if recording else "none"
             }
         }
@@ -170,6 +210,7 @@ Vous êtes désigné comme co-hôte de la réunion.
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
