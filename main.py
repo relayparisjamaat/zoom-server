@@ -5,6 +5,7 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
 import json
+from datetime import timezone
 
 app = FastAPI()
 
@@ -82,11 +83,17 @@ async def jotform_webhook(request: Request):
         date = data["q15_date"]
         time = data["q16_heure"]
 
+        '''start_time = datetime.strptime(
+            f"{date['year']}-{date['month']}-{date['day']} "
+            f"{time['hourSelect']}:{time['minuteSelect']}",
+            "%Y-%m-%d %H:%M"
+        ).isoformat()'''
+
         start_time = datetime.strptime(
             f"{date['year']}-{date['month']}-{date['day']} "
             f"{time['hourSelect']}:{time['minuteSelect']}",
             "%Y-%m-%d %H:%M"
-        ).isoformat()
+        ).replace(tzinfo=timezone.utc).isoformat()
 
         # -------------------------
         # TOKEN ZOOM
@@ -163,5 +170,6 @@ Vous êtes désigné comme co-hôte de la réunion.
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
