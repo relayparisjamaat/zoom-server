@@ -4,6 +4,7 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
+import json
 
 app = FastAPI()
 
@@ -51,7 +52,7 @@ async def jotform_webhook(request: Request):
         if not raw:
             raise HTTPException(status_code=400, detail="rawRequest manquant")
 
-        data = eval(raw)  # Jotform envoie un JSON stringifié
+        data = json.loads(raw) # Jotform envoie un JSON stringifié
         
         if data.get("q14_codeSecret") != JOTFORM_PASSWORD:
             raise HTTPException(status_code=401, detail="Unauthorized")
@@ -69,7 +70,6 @@ async def jotform_webhook(request: Request):
         duration_raw = data.get("q6_duration")
         recording = data.get("q13_recording")
 
-    
         # -------------------------
         # EXTRACTION DES DONNÉES
         # -------------------------
@@ -163,4 +163,5 @@ Vous êtes désigné comme co-hôte de la réunion.
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
