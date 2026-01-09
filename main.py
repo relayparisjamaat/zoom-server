@@ -49,7 +49,7 @@ async def jotform_webhook(request: Request):
     try:
         form = await request.form()
         raw = form.get("rawRequest")
-u
+
         if not raw:
             raise HTTPException(status_code=400, detail="rawRequest manquant")
 
@@ -170,6 +170,7 @@ Vous êtes désigné comme co-hôte de la réunion.
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
