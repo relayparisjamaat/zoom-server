@@ -9,8 +9,6 @@ from datetime import datetime, timezone
 import requests
 import socket
 
-socket.setdefaulttimeout(30)
-
 app = FastAPI()
 
 # -------------------------
@@ -217,6 +215,24 @@ async def jotform_webhook(request: Request):
         msg["From"] = SMTP_USER
         msg["To"] = email
 
+        print("🔥 Test de connexion SMTP Gmail")
+        socket.setdefaulttimeout(30)
+        try:
+            socket.create_connection(("smtp.gmail.com", 587), timeout=10)
+            print("SMTP CONNECT OK 587")
+        except Exception as e:
+            try:
+                print("SMTP ERROR:", repr(e))
+                socket.create_connection(("smtp.gmail.com", 465), timeout=10)
+                print("SMTP CONNECT OK 465")
+            except Exception as ee:
+                try:
+                    print("SMTP ERROR:", repr(ee))
+                    socket.create_connection(("smtp.gmail.com", 25), timeout=10)
+                    print("SMTP CONNECT OK 25")
+                except Exception as eee:
+                    print("SMTP ERROR:", repr(eee))
+
         print("🔥 Envoi email")
         try:
             with smtplib.SMTP("smtp.gmail.com", 587) as server:
@@ -248,6 +264,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
