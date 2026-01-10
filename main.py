@@ -91,10 +91,14 @@ async def jotform_webhook(request: Request):
             raise HTTPException(status_code=400, detail="rawRequest manquant")
 
         data = json.loads(raw) # Jotform envoie un JSON stringifié
+
+        print("🔥 Réception des données ok")
         
         if data.get("q14_codeSecret") != JOTFORM_PASSWORD:
             raise HTTPException(status_code=401, detail="Unauthorized")
-        
+
+        print("🔥 Mot de passe ok")
+        print("🔥 Début extraction des données")
         # Extraction
         first_name = data.get("q9_first_name")
         last_name = data.get("q10_last_time")
@@ -107,7 +111,9 @@ async def jotform_webhook(request: Request):
         time = data.get("q14_heure")
         duration_raw = data.get("q6_duration")
         recording = data.get("q13_recording")
+        print("🔥 Extraction ok")
 
+        '''
         # -------------------------
         # EXTRACTION DES DONNÉES
         # -------------------------
@@ -118,7 +124,7 @@ async def jotform_webhook(request: Request):
         recording = data["q13_recording"] == "Oui"
 
         date = data["q15_date"]
-        time = data["q16_heure"]
+        time = data["q16_heure"]'''
 
         '''start_time = datetime.strptime(
             f"{date['year']}-{date['month']}-{date['day']} "
@@ -126,12 +132,17 @@ async def jotform_webhook(request: Request):
             "%Y-%m-%d %H:%M"
         ).isoformat()'''
 
+        print("🔥 Conversion date heure")
+        
         start_time = datetime.strptime(
             f"{date['year']}-{date['month']}-{date['day']} "
             f"{time['hourSelect']}:{time['minuteSelect']}",
             "%Y-%m-%d %H:%M"
         ).replace(tzinfo=timezone.utc).isoformat()
 
+        print("🔥 Conversion date heure ok")
+        print("🔥 Création token")
+        
         # -------------------------
         # TOKEN ZOOM
         # -------------------------
@@ -142,8 +153,12 @@ async def jotform_webhook(request: Request):
             "Content-Type": "application/json"
         }
 
+        print("🔥 Création token ok")
+        
         # S'assurer que l'utilisateur existe dans Zoom
         host_email = get_or_create_zoom_user(email, token)
+
+        print("🔥 Création User ok")
 
         # -------------------------
         # CRÉATION RÉUNION
@@ -156,10 +171,11 @@ async def jotform_webhook(request: Request):
                 "duration": duration,
                 "agenda": description,
                 "settings": {
-                    "alternative_hosts": "",
+                    "alternative_hosts": host_email,
                     "auto_recording": "cloud" if recording else "none"
                 }
             }
+            print("🔥 Création Meeting ok")
         except Exception as e:
             print("Moving to not adding an alternative host : ", host_email)
             payload = {
@@ -173,6 +189,8 @@ async def jotform_webhook(request: Request):
                     "auto_recording": "cloud" if recording else "none"
                 }
             }
+            print("🔥 Création Meeting ok sans alternative host")
+            
         r = requests.post(
             "https://api.zoom.us/v2/users/me/meetings",
             headers=headers,
@@ -181,21 +199,23 @@ async def jotform_webhook(request: Request):
         r.raise_for_status()
         meeting = r.json()
 
+        print("🔥 Publication meeting ok")
+
         # -------------------------
         # ENVOI EMAIL
         # -------------------------
         body = f"""
-Votre visioconférence Zoom a été créée.
-
-Titre : {title}
-Date : {start_time}
-Durée : {duration} minutes
-
-Lien Zoom :
-{meeting['join_url']}
-
-Vous êtes désigné comme co-hôte de la réunion.
-"""
+                    Votre visioconférence Zoom a été créée.
+                    
+                    Titre : {title}
+                    Date : {start_time}
+                    Durée : {duration} minutes
+                    
+                    Lien Zoom :
+                    {meeting['join_url']}
+                    
+                    Vous êtes désigné comme co-hôte de la réunion.
+                """
 
         msg = MIMEText(body)
         msg["Subject"] = "Votre réunion Zoom"
@@ -206,12 +226,14 @@ Vous êtes désigné comme co-hôte de la réunion.
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
 
+        print("🔥 Mail ok")
+        
         return {
             "status": "OK",
             "meeting_id": meeting["id"],
             "join_url": meeting["join_url"]
         }
-
+        
     except Exception as e:
         print("🔥 ERREUR :", str(e))
         raise HTTPException(status_code=500, detail=str(e))
@@ -223,6 +245,7 @@ Vous êtes désigné comme co-hôte de la réunion.
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
