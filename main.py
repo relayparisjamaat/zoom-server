@@ -31,14 +31,14 @@ JOTFORM_PASSWORD = "515253" #correspond à un champ caché dans le Jotform
 
 def send_email(to_email: str, subject: str, html_content: str):
     message = Mail(
-        from_email=os.getenv["SENDGRID_FROM"],
+        from_email=os.getenv("SENDGRID_FROM"),
         to_emails=to_email,
         subject=subject,
         html_content=html_content
     )
 
     try:
-        sg = SendGridAPIClient(os.getenv["SENDGRID_API_KEY"])
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
         response = sg.send(message)
         print("📧 SENDGRID STATUS:", response.status_code)
     except Exception as e:
@@ -308,11 +308,12 @@ def root():
 @app.get("/test-email")
 def test_email():
     send_email(
-        "ton_email_perso@gmail.com",
+        "mourtaza.kassamaly@gmail.com",
         "Test SendGrid OK",
         "<p>Email SendGrid fonctionnel 🎉</p>"
     )
     return {"status": "sent"}
+
 
 
 
