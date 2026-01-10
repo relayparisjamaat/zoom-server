@@ -198,6 +198,7 @@ async def jotform_webhook(request: Request):
         # -------------------------
         # ENVOI EMAIL
         # -------------------------
+        print("🔥 Rédaction e-mail")
         body = f"""
                     Votre visioconférence Zoom a été créée.
                     
@@ -216,7 +217,8 @@ async def jotform_webhook(request: Request):
         msg["From"] = SMTP_USER
         msg["To"] = email
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        print("🔥 Envoi email")
+        with smtplib.SMTP_SSL("smtp.gmail.com", 25) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
 
@@ -239,6 +241,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
