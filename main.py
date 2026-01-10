@@ -218,10 +218,18 @@ async def jotform_webhook(request: Request):
         msg["To"] = email
 
         print("🔥 Envoi email")
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(SMTP_USER, email, msg)
-
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.starttls()  # Secure the connection
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(SMTP_USER, email, msg)
+        except smtplib.SMTPConnectError:
+            print("Failed to connect to the SMTP server.")
+        except smtplib.SMTPAuthenticationError:
+            print("Authentication failed. Check your email and app password.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            
         print("🔥 Mail ok")
         
         return {
@@ -241,6 +249,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
