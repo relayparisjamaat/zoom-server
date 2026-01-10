@@ -110,23 +110,10 @@ async def jotform_webhook(request: Request):
         title = data.get("q4_title")
         description = data.get("q7_description")
         date = data.get("q15_date")
-        time = data.get("q14_time")
+        time = data.get("q16_time")
         duration_raw = data.get("q6_duration")
         recording = data.get("q13_recording")
         print("🔥 Extraction ok")
-
-        '''
-        # -------------------------
-        # EXTRACTION DES DONNÉES
-        # -------------------------
-        title = data["q4_title"]
-        description = data["q7_description"]
-        email = data["q11_email"]
-        duration = int(data["q6_duration"])
-        recording = data["q13_recording"] == "Oui"
-
-        date = data["q15_date"]
-        time = data["q16_heure"]'''
 
         '''start_time = datetime.strptime(
             f"{date['year']}-{date['month']}-{date['day']} "
@@ -250,6 +237,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
