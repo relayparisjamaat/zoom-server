@@ -161,10 +161,6 @@ async def jotform_webhook(request: Request):
         }
 
         print("🔥 Création token ok")
-        
-        # S'assurer que l'utilisateur existe dans Zoom sinon cela plantera
-        #host_email = get_or_create_zoom_user(email, token)
-        host_email = email
 
         # -------------------------
         # CRÉATION RÉUNION
@@ -177,7 +173,7 @@ async def jotform_webhook(request: Request):
                 "duration": int(duration),
                 "agenda": description,
                 "settings": {
-                    "alternative_hosts": host_email,
+                    "alternative_hosts": email,
                     "auto_recording": "cloud" if recording else "none"
                 }
             }
@@ -192,7 +188,7 @@ async def jotform_webhook(request: Request):
             meeting = r.json()
             print("🔥 Création Meeting ok")
         except Exception as e:
-            print("Moving to not adding an alternative host : ", host_email)
+            print("Moving to not adding an alternative host : ", email)
             payload = {
                 "topic": title,
                 "type": 2,
@@ -305,14 +301,6 @@ async def jotform_webhook(request: Request):
 def root():
     return {"status": "server running"}
 
-@app.get("/test-email")
-def test_email():
-    send_email(
-        "mourtaza.kassamaly@gmail.com",
-        "Test SendGrid OK",
-        "<p>Email SendGrid fonctionnel 🎉</p>"
-    )
-    return {"status": "sent"}
 
 
 
