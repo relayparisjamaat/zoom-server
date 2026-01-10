@@ -265,7 +265,14 @@ async def jotform_webhook(request: Request):
 def root():
     return {"status": "server running"}
 
-
+@app.get("/test-email")
+def test_email():
+    send_email(
+        "ton_email_perso@gmail.com",
+        "Test SendGrid OK",
+        "<p>Email SendGrid fonctionnel 🎉</p>"
+    )
+    return {"status": "sent"}
 
 
 
