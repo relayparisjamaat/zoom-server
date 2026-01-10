@@ -8,6 +8,8 @@ import json
 from datetime import datetime, timezone
 import requests
 import socket
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 app = FastAPI()
 
@@ -23,6 +25,26 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 JOTFORM_PASSWORD = "515253" #correspond à un champ caché dans le Jotform
 
+# -------------------------
+# E-mail
+# -------------------------
+
+def send_email(to_email: str, subject: str, html_content: str):
+    message = Mail(
+        from_email=os.getenv["SENDGRID_FROM"],
+        to_emails=to_email,
+        subject=subject,
+        html_content=html_content
+    )
+
+    try:
+        sg = SendGridAPIClient(os.getenv["SENDGRID_API_KEY"])
+        response = sg.send(message)
+        print("📧 SENDGRID STATUS:", response.status_code)
+    except Exception as e:
+        print("🔥 SENDGRID ERROR:", str(e))
+        raise
+        
 # -------------------------
 # ZOOM TOKEN (Server-to-Server OAuth)
 # -------------------------
@@ -197,6 +219,23 @@ async def jotform_webhook(request: Request):
         # ENVOI EMAIL
         # -------------------------
         print("🔥 Rédaction e-mail")
+        print("🔥 Récupération URL Zoom")
+        join_url = zoom_response.json()["join_url"] #{meeting['join_url']}
+        print("🔥 Récupération URL Zoom ok")
+        send_email(
+            email,
+            "Votre réunion Zoom est confirmée",
+            f"""
+                <h2>Réunion créée avec succès</h2>
+                <p><b>Lien de connexion :</b></p>
+                <p><a href="{join_url}">{join_url}</a></p>
+                <p>Date : {start_time}</p>
+                <p>Durée : {duration} minutes</p>
+            """
+        )
+
+        '''
+        print("🔥 Rédaction e-mail")
         body = f"""
                     Votre visioconférence Zoom a été créée.
                     
@@ -204,7 +243,7 @@ async def jotform_webhook(request: Request):
                     Date : {start_time}
                     Durée : {duration} minutes
                     
-                    Lien Zoom :
+                    Lien Zoom : {meeting['join_url']}
                     {meeting['join_url']}
                     
                     Vous êtes désigné comme co-hôte de la réunion.
@@ -246,6 +285,7 @@ async def jotform_webhook(request: Request):
             print("Authentication failed. Check your email and app password.")
         except Exception as e:
             print(f"An error occurred: {e}")
+        '''
         
         return {
             "status": "OK",
@@ -273,6 +313,7 @@ def test_email():
         "<p>Email SendGrid fonctionnel 🎉</p>"
     )
     return {"status": "sent"}
+
 
 
 
