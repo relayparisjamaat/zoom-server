@@ -220,7 +220,7 @@ async def jotform_webhook(request: Request):
         # -------------------------
         print("🔥 Rédaction e-mail")
         print("🔥 Récupération URL Zoom")
-        join_url = zoom_response.json()["join_url"] #{meeting['join_url']}
+        join_url = meeting['join_url']
         print("🔥 Récupération URL Zoom ok")
         send_email(
             email,
@@ -313,6 +313,7 @@ def test_email():
         "<p>Email SendGrid fonctionnel 🎉</p>"
     )
     return {"status": "sent"}
+
 
 
 
