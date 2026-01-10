@@ -6,6 +6,10 @@ from email.mime.text import MIMEText
 from datetime import datetime
 import json
 from datetime import datetime, timezone
+import requests
+import socket
+
+socket.setdefaulttimeout(30)
 
 app = FastAPI()
 
@@ -157,6 +161,8 @@ async def jotform_webhook(request: Request):
                     "auto_recording": "cloud" if recording else "none"
                 }
             }
+            test = requests.get("https://api.zoom.us/v2/users/me", headers={"Authorization": f"Bearer {token}"})
+            print("TEST ZOOM STATUS:", test.status_code)
             r = requests.post(
                 "https://api.zoom.us/v2/users/me/meetings",
                 headers=headers,
@@ -178,6 +184,8 @@ async def jotform_webhook(request: Request):
                     "auto_recording": "cloud" if recording else "none"
                 }
             }
+            test = requests.get("https://api.zoom.us/v2/users/me", headers={"Authorization": f"Bearer {token}"})
+            print("TEST ZOOM STATUS:", test.status_code)
             r = requests.post(
                 "https://api.zoom.us/v2/users/me/meetings",
                 headers=headers,
@@ -231,6 +239,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
