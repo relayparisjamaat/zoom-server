@@ -4,3 +4,4 @@ pytz
 python-multipart
 requests
 email-validator
+sendgrid
