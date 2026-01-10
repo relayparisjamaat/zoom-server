@@ -223,14 +223,13 @@ async def jotform_webhook(request: Request):
                 server.starttls()  # Secure the connection
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(SMTP_USER, email, msg)
+            print("🔥 Mail ok")
         except smtplib.SMTPConnectError:
             print("Failed to connect to the SMTP server.")
         except smtplib.SMTPAuthenticationError:
             print("Authentication failed. Check your email and app password.")
         except Exception as e:
             print(f"An error occurred: {e}")
-            
-        print("🔥 Mail ok")
         
         return {
             "status": "OK",
@@ -249,6 +248,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
