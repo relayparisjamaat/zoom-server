@@ -148,18 +148,31 @@ async def jotform_webhook(request: Request):
         # -------------------------
         # CRÉATION RÉUNION
         # -------------------------
-        payload = {
-            "topic": title,
-            "type": 2,
-            "start_time": start_time,
-            "duration": duration,
-            "agenda": description,
-            "settings": {
-                "alternative_hosts": host_email,
-                "auto_recording": "cloud" if recording else "none"
+        try:
+            payload = {
+                "topic": title,
+                "type": 2,
+                "start_time": start_time,
+                "duration": duration,
+                "agenda": description,
+                "settings": {
+                    "alternative_hosts": host_email,
+                    "auto_recording": "cloud" if recording else "none"
+                }
             }
-        }
-
+        except Exception as e:
+            print("Moving to not adding an alternative host : ", host_email)
+            payload = {
+                "topic": title,
+                "type": 2,
+                "start_time": start_time,
+                "duration": duration,
+                "agenda": description,
+                "settings": {
+                    "alternative_hosts": "",
+                    "auto_recording": "cloud" if recording else "none"
+                }
+            }
         r = requests.post(
             "https://api.zoom.us/v2/users/me/meetings",
             headers=headers,
@@ -210,6 +223,7 @@ Vous êtes désigné comme co-hôte de la réunion.
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
