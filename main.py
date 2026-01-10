@@ -5,7 +5,7 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
 import json
-from datetime import timezone
+from datetime import datetime, timezone
 
 app = FastAPI()
 
@@ -113,25 +113,16 @@ async def jotform_webhook(request: Request):
         time = data.get("q16_time")
         duration_raw = data.get("q6_duration")
         recording = data.get("q13_recording")
-        print("🔥 Extraction ok")
-
-        '''start_time = datetime.strptime(
-            f"{date['year']}-{date['month']}-{date['day']} "
-            f"{time['hourSelect']}:{time['minuteSelect']}",
-            "%Y-%m-%d %H:%M"
-        ).isoformat()'''
-
-        print("🔥 Conversion date heure")
-        print(date)
-        print(time)
         
+        print("🔥 Extraction ok")
+        print("🔥 Conversion date heure")
+
         start_time = datetime.strptime(
             f"{date['year']}-{date['month']}-{date['day']} "
             f"{time['hourSelect']}:{time['minuteSelect']}",
             "%Y-%m-%d %H:%M"
         ).replace(tzinfo=timezone.utc).isoformat()
 
-        print(start_time)
         print("🔥 Conversion date heure ok")
         print("🔥 Création token")
         
@@ -147,10 +138,9 @@ async def jotform_webhook(request: Request):
 
         print("🔥 Création token ok")
         
-        # S'assurer que l'utilisateur existe dans Zoom
-        host_email = get_or_create_zoom_user(email, token)
-
-        print("🔥 Création User ok")
+        # S'assurer que l'utilisateur existe dans Zoom sinon cela plantera
+        #host_email = get_or_create_zoom_user(email, token)
+        host_email = email
 
         # -------------------------
         # CRÉATION RÉUNION
@@ -160,7 +150,7 @@ async def jotform_webhook(request: Request):
                 "topic": title,
                 "type": 2,
                 "start_time": start_time,
-                "duration": duration,
+                "duration": int(duration),
                 "agenda": description,
                 "settings": {
                     "alternative_hosts": host_email,
@@ -174,7 +164,7 @@ async def jotform_webhook(request: Request):
                 "topic": title,
                 "type": 2,
                 "start_time": start_time,
-                "duration": duration,
+                "duration": int(duration),
                 "agenda": description,
                 "settings": {
                     "alternative_hosts": "",
@@ -237,6 +227,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
