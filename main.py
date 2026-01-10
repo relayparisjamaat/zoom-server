@@ -104,7 +104,7 @@ async def jotform_webhook(request: Request):
         # Extraction
         first_name = data.get("q9_first_name")
         last_name = data.get("q10_last_time")
-        email = data.get("q11_eEmail")
+        email = data.get("q11_email")
         phone = data.get("q12_phone")
         session_type = data.get("q3_session_type")
         title = data.get("q4_title")
@@ -227,6 +227,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
