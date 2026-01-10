@@ -157,6 +157,13 @@ async def jotform_webhook(request: Request):
                     "auto_recording": "cloud" if recording else "none"
                 }
             }
+            r = requests.post(
+                "https://api.zoom.us/v2/users/me/meetings",
+                headers=headers,
+                json=payload
+            )
+            r.raise_for_status()
+            meeting = r.json()
             print("🔥 Création Meeting ok")
         except Exception as e:
             print("Moving to not adding an alternative host : ", host_email)
@@ -171,17 +178,14 @@ async def jotform_webhook(request: Request):
                     "auto_recording": "cloud" if recording else "none"
                 }
             }
+            r = requests.post(
+                "https://api.zoom.us/v2/users/me/meetings",
+                headers=headers,
+                json=payload
+            )
+            r.raise_for_status()
+            meeting = r.json()
             print("🔥 Création Meeting ok sans alternative host")
-            
-        r = requests.post(
-            "https://api.zoom.us/v2/users/me/meetings",
-            headers=headers,
-            json=payload
-        )
-        r.raise_for_status()
-        meeting = r.json()
-
-        print("🔥 Publication meeting ok")
 
         # -------------------------
         # ENVOI EMAIL
@@ -227,6 +231,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
