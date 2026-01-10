@@ -133,6 +133,8 @@ async def jotform_webhook(request: Request):
         ).isoformat()'''
 
         print("🔥 Conversion date heure")
+        print(date)
+        print(time)
         
         start_time = datetime.strptime(
             f"{date['year']}-{date['month']}-{date['day']} "
@@ -245,6 +247,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
