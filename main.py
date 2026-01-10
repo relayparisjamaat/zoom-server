@@ -99,6 +99,8 @@ async def jotform_webhook(request: Request):
 
         print("🔥 Mot de passe ok")
         print("🔥 Début extraction des données")
+        print(data)
+        
         # Extraction
         first_name = data.get("q9_first_name")
         last_name = data.get("q10_last_time")
@@ -108,7 +110,7 @@ async def jotform_webhook(request: Request):
         title = data.get("q4_title")
         description = data.get("q7_description")
         date = data.get("q15_date")
-        time = data.get("q14_heure")
+        time = data.get("q14_time")
         duration_raw = data.get("q6_duration")
         recording = data.get("q13_recording")
         print("🔥 Extraction ok")
@@ -142,6 +144,7 @@ async def jotform_webhook(request: Request):
             "%Y-%m-%d %H:%M"
         ).replace(tzinfo=timezone.utc).isoformat()
 
+        print(start_time)
         print("🔥 Conversion date heure ok")
         print("🔥 Création token")
         
@@ -247,6 +250,7 @@ async def jotform_webhook(request: Request):
 @app.get("/")
 def root():
     return {"status": "server running"}
+
 
 
 
